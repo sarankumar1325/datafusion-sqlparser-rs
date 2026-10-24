@@ -8150,6 +8150,8 @@ impl<'a> Parser<'a> {
             ObjectType::Index
         } else if self.parse_keyword(Keyword::ROLE) {
             ObjectType::Role
+        } else if self.dialect.supports_drop_group() && self.parse_keyword(Keyword::GROUP) {
+            ObjectType::Group
         } else if self.parse_keyword(Keyword::SCHEMA) {
             ObjectType::Schema
         } else if self.parse_keyword(Keyword::DATABASE) {
@@ -8193,7 +8195,7 @@ impl<'a> Parser<'a> {
             };
         } else {
             return self.expected_ref(
-                "COLLATION, CONNECTOR, DATABASE, EXTENSION, FOREIGN TABLE, FUNCTION, INDEX, OPERATOR, POLICY, PROCEDURE, ROLE, SCHEMA, SECRET, SEQUENCE, STAGE, TABLE, TRIGGER, TYPE, VIEW, MATERIALIZED VIEW, USER or WAREHOUSE after DROP",
+                "COLLATION, CONNECTOR, DATABASE, EXTENSION, FOREIGN TABLE, FUNCTION, GROUP, INDEX, OPERATOR, POLICY, PROCEDURE, ROLE, SCHEMA, SECRET, SEQUENCE, STAGE, TABLE, TRIGGER, TYPE, VIEW, MATERIALIZED VIEW, USER or WAREHOUSE after DROP",
                 self.peek_token_ref(),
             );
         };
@@ -8209,9 +8211,11 @@ impl<'a> Parser<'a> {
         if cascade && restrict {
             return parser_err!("Cannot specify both CASCADE and RESTRICT in DROP", loc);
         }
-        if object_type == ObjectType::Role && (cascade || restrict || purge) {
+        if matches!(object_type, ObjectType::Role | ObjectType::Group)
+            && (cascade || restrict || purge)
+        {
             return parser_err!(
-                "Cannot specify CASCADE, RESTRICT, or PURGE in DROP ROLE",
+                format_args!("Cannot specify CASCADE, RESTRICT, or PURGE in DROP {object_type}"),
                 loc
             );
         }
