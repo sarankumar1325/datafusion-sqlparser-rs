@@ -9928,7 +9928,10 @@ impl<'a> Parser<'a> {
             None => Expr::Identifier(self.parse_identifier()?),
         };
 
-        Ok(Some(SqlOption::KeyValue { key, value }))
+        Ok(Some(SqlOption::KeyValue {
+            key: key.into(),
+            value,
+        }))
     }
 
     /// Parse plain options.
@@ -11112,7 +11115,7 @@ impl<'a> Parser<'a> {
                 self.parse_option_clustered()
             }
             _ => {
-                let name = self.parse_identifier()?;
+                let name = ObjectName::from(self.parse_period_separated(|p| p.parse_identifier())?);
                 self.expect_token(&Token::Eq)?;
                 let value = self.parse_expr()?;
 
