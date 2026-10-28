@@ -19326,7 +19326,7 @@ fn parse_create_procedure_with_language() {
         } => {
             assert_eq!(or_alter, false);
             assert_eq!(name.to_string(), "test_proc");
-            assert_eq!(params, Some(vec![]));
+            assert_eq!(params, None);
             assert_eq!(
                 language,
                 Some(Ident {
@@ -22523,4 +22523,34 @@ fn display_grant_role_options_propagates_write_errors() {
         let mut writer = RejectingWriter(rejected);
         assert_eq!(write!(writer, "{statement}"), Err(fmt::Error));
     }
+}
+
+#[test]
+fn parse_create_procedure_empty_parameter_list() {
+    verified_stmt("CREATE PROCEDURE p () AS BEGIN SELECT 1; END");
+    match verified_stmt("CREATE PROCEDURE p AS BEGIN SELECT 1; END") {
+        Statement::CreateProcedure { params, .. } => assert_eq!(params, None),
+        stmt => panic!("unexpected statement: {stmt:?}"),
+    }
+}
+
+#[test]
+fn display_create_procedure_parameter_list_propagates_write_errors() {
+    use core::fmt::{self, Write};
+
+    struct RejectingWriter(&'static str);
+
+    impl Write for RejectingWriter {
+        fn write_str(&mut self, value: &str) -> fmt::Result {
+            if value == self.0 {
+                Err(fmt::Error)
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    let statement = verified_stmt("CREATE PROCEDURE p () AS BEGIN SELECT 1; END");
+    let mut writer = RejectingWriter(" (");
+    assert_eq!(write!(writer, "{statement}"), Err(fmt::Error));
 }
