@@ -21375,20 +21375,40 @@ impl<'a> Parser<'a> {
 
     /// Parse a `CREATE FOREIGN TABLE` statement.
     ///
-    /// Per-column `OPTIONS ( ... )`, `INHERITS`, and the `PARTITION OF` form are
-    /// not parsed yet.
+    /// Per-column `OPTIONS ( ... )` and `INHERITS` are not parsed yet.
     ///
     /// See <https://www.postgresql.org/docs/current/sql-createforeigntable.html>
     pub fn parse_create_foreign_table(&mut self) -> Result<CreateForeignTable, ParserError> {
         let if_not_exists = self.parse_keywords(&[Keyword::IF, Keyword::NOT, Keyword::EXISTS]);
         let name = self.parse_object_name(false)?;
-        if self.peek_token_ref().token != Token::LParen {
+        let partition_of = if self.parse_keywords(&[Keyword::PARTITION, Keyword::OF]) {
+            Some(self.parse_object_name(false)?)
+        } else {
+            None
+        };
+        if partition_of.is_none() && self.peek_token_ref().token != Token::LParen {
             return self.expected_ref(
                 "'(' before the column list of CREATE FOREIGN TABLE",
                 self.peek_token_ref(),
             );
         }
         let (columns, constraints) = self.parse_columns()?;
+
+        let for_values = if partition_of.is_some() {
+            if self
+                .peek_one_of_keywords(&[Keyword::FOR, Keyword::DEFAULT])
+                .is_none()
+            {
+                return self.expected_ref(
+                    "FOR VALUES or DEFAULT after PARTITION OF",
+                    self.peek_token_ref(),
+                );
+            }
+            Some(self.parse_partition_for_values()?)
+        } else {
+            None
+        };
+
         self.expect_keyword_is(Keyword::SERVER)?;
         let server_name = self.parse_identifier()?;
         let options = self.parse_pg_options_clause()?;
@@ -21398,6 +21418,8 @@ impl<'a> Parser<'a> {
             if_not_exists,
             columns,
             constraints,
+            partition_of,
+            for_values,
             server_name,
             options,
         })
