@@ -11061,12 +11061,21 @@ fn parse_role_signed_connection_limit() {
 #[test]
 fn parse_create_function_begin_atomic() {
     let sql = "CREATE FUNCTION f() RETURNS INT LANGUAGE sql BEGIN ATOMIC SELECT 1; END";
-    match pg_and_generic().verified_stmt(sql) {
+    pg_and_generic().verified_stmt(sql);
+    match pg_and_generic().run_parser_method(sql, |parser| parser.parse_statement().unwrap()) {
         Statement::CreateFunction(CreateFunction {
-            function_body:
-                Some(CreateFunctionBody::BeginAtomic(BeginEndStatements { statements, .. })),
+            function_body: Some(CreateFunctionBody::BeginAtomic(body)),
             ..
-        }) => assert_eq!(statements, vec![pg_and_generic().verified_stmt("SELECT 1")]),
+        }) => {
+            assert_eq!(
+                body.statements,
+                vec![pg_and_generic().verified_stmt("SELECT 1")]
+            );
+            assert_eq!(
+                body.span(),
+                Span::new(Location::new(1, 46), Location::new(1, 72))
+            );
+        }
         stmt => panic!("unexpected statement: {stmt:?}"),
     }
 
