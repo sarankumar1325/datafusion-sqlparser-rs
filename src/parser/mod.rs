@@ -18688,6 +18688,24 @@ impl<'a> Parser<'a> {
                     schemas: self.parse_comma_separated(|p| p.parse_object_name(false))?,
                 })
             } else if self.parse_keywords(&[
+                Keyword::ALL,
+                Keyword::PROCEDURES,
+                Keyword::IN,
+                Keyword::SCHEMA,
+            ]) {
+                Some(GrantObjects::AllProceduresInSchema {
+                    schemas: self.parse_comma_separated(|p| p.parse_object_name(false))?,
+                })
+            } else if self.parse_keywords(&[
+                Keyword::ALL,
+                Keyword::ROUTINES,
+                Keyword::IN,
+                Keyword::SCHEMA,
+            ]) {
+                Some(GrantObjects::AllRoutinesInSchema {
+                    schemas: self.parse_comma_separated(|p| p.parse_object_name(false))?,
+                })
+            } else if self.parse_keywords(&[
                 Keyword::FUTURE,
                 Keyword::SCHEMAS,
                 Keyword::IN,
@@ -18778,6 +18796,10 @@ impl<'a> Parser<'a> {
                 ))
             } else if self.parse_keyword(Keyword::PROCEDURE) {
                 Some(GrantObjects::Procedures(
+                    self.parse_comma_separated(Parser::parse_function_desc)?,
+                ))
+            } else if self.parse_keyword(Keyword::ROUTINE) {
+                Some(GrantObjects::Routines(
                     self.parse_comma_separated(Parser::parse_function_desc)?,
                 ))
             } else {
