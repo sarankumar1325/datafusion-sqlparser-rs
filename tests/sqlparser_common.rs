@@ -22747,7 +22747,12 @@ fn display_create_procedure_parameter_list_propagates_write_errors() {
 
 #[test]
 fn parse_refresh_materialized_view() {
-    match verified_stmt("REFRESH MATERIALIZED VIEW CONCURRENTLY app.m WITH NO DATA") {
+    let sql = "REFRESH MATERIALIZED VIEW CONCURRENTLY app.m WITH NO DATA";
+    assert_eq!(
+        Parser::parse_sql(&GenericDialect {}, sql).unwrap()[0].span(),
+        Span::new(Location::new(1, 40), Location::new(1, 45))
+    );
+    match verified_stmt(sql) {
         Statement::RefreshMaterializedView(RefreshMaterializedView {
             concurrently,
             name,
