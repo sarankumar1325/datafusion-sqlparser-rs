@@ -11229,3 +11229,37 @@ fn parse_alter_table_attach_partition_of() {
         );
     }
 }
+
+#[test]
+fn parse_named_argument_with_assignment_operator() {
+    let select = pg().verified_only_select("SELECT f(x := 1, y => 2)");
+    let Expr::Function(Function {
+        args: FunctionArguments::List(FunctionArgumentList { args, .. }),
+        ..
+    }) = expr_from_projection(only(&select.projection))
+    else {
+        panic!("expected a function call");
+    };
+    assert_eq!(
+        args,
+        &[
+            FunctionArg::ExprNamed {
+                name: Expr::Identifier(Ident::new("x")),
+                arg: FunctionArgExpr::Expr(Expr::value(number("1"))),
+                operator: FunctionArgOperator::Assignment,
+            },
+            FunctionArg::ExprNamed {
+                name: Expr::Identifier(Ident::new("y")),
+                arg: FunctionArgExpr::Expr(Expr::value(number("2"))),
+                operator: FunctionArgOperator::RightArrow,
+            },
+        ]
+    );
+
+    assert_eq!(
+        pg().parse_sql_statements("SELECT x := 1")
+            .unwrap_err()
+            .to_string(),
+        "sql parser error: Expected: end of statement, found: :="
+    );
+}
