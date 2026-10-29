@@ -21386,13 +21386,16 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
-        if partition_of.is_none() && self.peek_token_ref().token != Token::LParen {
+        let (columns, constraints) = if partition_of.is_some() {
+            self.parse_partition_of_columns()?
+        } else if self.peek_token_ref().token == Token::LParen {
+            self.parse_columns()?
+        } else {
             return self.expected_ref(
                 "'(' before the column list of CREATE FOREIGN TABLE",
                 self.peek_token_ref(),
             );
-        }
-        let (columns, constraints) = self.parse_columns()?;
+        };
 
         let for_values = if partition_of.is_some() {
             if self
