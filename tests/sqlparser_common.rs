@@ -22744,3 +22744,16 @@ fn display_create_procedure_parameter_list_propagates_write_errors() {
     let mut writer = RejectingWriter(" (");
     assert_eq!(write!(writer, "{statement}"), Err(fmt::Error));
 }
+
+#[test]
+fn parse_show_ilike_filter_keeps_quotes() {
+    let stmts = vec![
+        "SHOW DATABASES ILIKE '%DE%'",
+        "SHOW SCHEMAS ILIKE '%abc'",
+        "SHOW TABLES ILIKE 'it''s'",
+    ];
+    for stmt in stmts {
+        all_dialects_where(|d| d.supports_show_like_before_in()).verified_stmt(stmt);
+        all_dialects_where(|d| !d.supports_show_like_before_in()).verified_stmt(stmt);
+    }
+}
